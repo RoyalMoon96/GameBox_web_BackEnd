@@ -1,0 +1,32 @@
+require('dotenv').config();
+const express = require('express');
+const http = require('http');
+const cors = require('cors');
+const { Server } = require('socket.io');
+
+const { connect } = require('./config/db');
+const authRoutes = require('./routes/auth.routes');
+const setupSocket = require('./socket/socket');
+
+const PORT = process.env.PORT || 3000;
+const MONGO_URI = process.env.MONGO_URI || 'mongodb://localhost:27017/myapp';
+
+const app = express();
+app.use(cors());
+app.use(express.json());
+
+app.get('/health', (req, res) => res.json({ status: 'ok' }));
+app.use('/auth', authRoutes);
+
+(async () => {
+  await connect(MONGO_URI);
+
+  const server = http.createServer(app);
+  const io = new Server(server, { cors: { origin: '*' } });
+
+  const users = {}; // en memoria: socketId -> username
+
+  setupSocket(io, users);
+
+  server.listen(PORT, () => console.log(`Servidor en http://localhost:${PORT}`));
+})();

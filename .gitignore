@@ -1,0 +1,62 @@
+# ===========================
+# Node
+# ===========================
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# Environment variables
+.env
+.env.local
+.env.*.local
+
+# Logs
+logs
+*.log
+*.log.*
+debug.log
+
+# Runtime data
+pids
+*.pid
+*.seed
+*.pid.lock
+
+# Coverage output
+coverage/
+*.lcov
+
+# Build output
+dist/
+build/
+tmp/
+temp/
+
+# cache
+.cache/
+.cache-loader/
+.eslintcache
+parcel-cache/
+.next/
+.nuxt/
+vite.cache/
+
+# Editor folders
+.vscode/
+.idea/
+
+# OS-specific
+.DS_Store
+Thumbs.db
+
+# Docker
+docker-data/
+docker-compose.override.yml
+
+# Optional – if you use ts-node or babel-node
+*.tsbuildinfo
+
+# Optional – ignore local MongoDB dump directories
+dump/
