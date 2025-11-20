@@ -68,12 +68,12 @@ exports.register = async (req, res) => {
 
 exports.login = async (req, res) => {
   try {
-    const { username, password, google_id } = req.body;
+    const { email, password, google_id } = req.body;
 
-    if (!username)
-      return res.status(400).json({ message: 'username requerido' });
+    if (!email)
+      return res.status(400).json({ message: 'email requerido' });
 
-    const user = await User.findOne({ username });
+    const user = await User.findOne({ email });
     if (!user) return res.status(404).json({ message: 'usuario no encontrado' });
 
     if (google_id) {
@@ -114,4 +114,77 @@ exports.me = async (req, res) => {
   const { user } = req; 
   const dbUser = await User.findOne({ userid: user.userid }).select('-password -__v');
   res.json(dbUser);
+};
+
+//============
+// GOOGLE AUTH
+//============
+
+const { OAuth2Client } = require('google-auth-library');
+const googleClient = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
+
+exports.googleLogin = async (req, res) => {
+  try {
+    const { credential } = req.body;
+
+    if (!credential)
+      return res.status(400).json({ message: 'Token de Google faltante' });
+
+    // Validar token con Google
+    const ticket = await googleClient.verifyIdToken({
+      idToken: credential,
+      audience: process.env.GOOGLE_CLIENT_ID
+    });
+
+    const payload = ticket.getPayload();
+
+    const { email, sub: googleId, name, picture } = payload;
+
+    if (!email)
+      return res.status(400).json({ message: 'Google no proporcionó email' });
+
+    // Buscar usuario existente
+    let user = await User.findOne({ email });
+
+    // Si no existe, crearlo
+    if (!user) {
+      user = new User({
+        username: name.replace(/ /g, '_') + "_" + Date.now(),
+        userid: uuidv4(),
+        email,
+        img: picture || '',
+        google_id: googleId,
+        password: null
+      });
+
+      await user.save();
+    }
+
+    // Si existe pero no tiene google_id, lo agregamos (opcional)
+    if (!user.google_id) {
+      user.google_id = googleId;
+      await user.save();
+    }
+
+    // Firmar token igual que en login/register
+    const token = signToken({
+      username: user.username,
+      userid: user.userid,
+      email: user.email
+    });
+
+    return res.json({
+      token,
+      user: {
+        username: user.username,
+        userid: user.userid,
+        email: user.email,
+        img: user.img
+      }
+    });
+
+  } catch (err) {
+    console.error("Google Login Error:", err);
+    res.status(401).json({ message: 'Token inválido de Google' });
+  }
 };
