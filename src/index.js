@@ -6,7 +6,7 @@ const { Server } = require('socket.io');
 
 const { connect } = require('./config/db');
 const authRoutes = require('./routes/auth.routes');
-const setupSocket = require('./socket/socket');
+const setupSockets = require('./socket/socket');
 
 const PORT = process.env.PORT || 3000;
 const MONGO_URI = process.env.MONGO_URI || 'mongodb://localhost:27017/myapp';
@@ -22,11 +22,8 @@ app.use('/auth', authRoutes);
   await connect(MONGO_URI);
 
   const server = http.createServer(app);
-  const io = new Server(server, { cors: { origin: '*' } });
 
-  const users = {}; // en memoria: socketId -> username
-
-  setupSocket(io, users);
+  setupSockets(server, { corsOrigin: "*" });
 
   server.listen(PORT, () => console.log(`Servidor en http://localhost:${PORT}`));
 })();
