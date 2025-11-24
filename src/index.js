@@ -6,7 +6,7 @@ const { Server } = require('socket.io');
 
 const { connect } = require('./config/db');
 const authRoutes = require('./routes/auth.routes');
-const setupSockets = require('./socket/socket');
+const setupSockets = require('./socket/index');
 
 const PORT = process.env.PORT || 3000;
 const MONGO_URI = process.env.MONGO_URI || 'mongodb://localhost:27017/myapp';

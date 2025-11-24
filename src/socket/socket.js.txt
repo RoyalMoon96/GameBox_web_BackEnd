@@ -123,10 +123,20 @@ module.exports = function setupSockets(serverHttp, options = {}) {
 
     const room = rooms.get(code);
 
-    if (room.players.some(p => p.userid === socket.user.userid)) {
-      return socket.emit('errorMessage', 'Ya estás en esta sala');
-    }
+    for (const [otherCode, otherRoom] of rooms.entries()) {
 
+      // Evitar borrar de la sala actual
+      if (otherCode === code) continue;
+
+      const idx = otherRoom.players.findIndex(p => p.userid === socket.user.userid);
+      if (idx !== -1) {
+        otherRoom.players.splice(idx, 1);
+        socket.leave(otherCode);
+
+        io.to(otherCode).emit('errorMessage', 'Oponente salió');
+        console.log(`Usuario ${socket.user.username} salió automáticamente de sala ${otherCode}`);
+      }
+}
     if (room.players.length >= 2) {
       return socket.emit('errorMessage', 'Sala llena');
     }
@@ -140,10 +150,24 @@ module.exports = function setupSockets(serverHttp, options = {}) {
     socket.join(code);
 
       // Notify players
-      const hostSocketId = room.players[0].socketId;
-      io.to(hostSocketId).emit('opponentJoined', { opponent: { username: socket.user.username } });
-      socket.emit('roomJoined', { code, role: 'P2' });
+      // Notify host that opponent joined
+      const host = room.players[0];
+      const guest = room.players[1];
 
+      // Send to Host (P1)
+      io.to(host.socketId).emit("playerInfo", {
+        self: { username: host.username, role: "P1" },
+        opponent: { username: guest.username, role: "P2" }
+      });
+
+      // Send to Guest (P2)
+      io.to(guest.socketId).emit("playerInfo", {
+        self: { username: guest.username, role: "P2" },
+        opponent: { username: host.username, role: "P1" }
+      });
+
+      // Guest officially joined
+      socket.emit("roomJoined", { code, role: "P2" });
       // Start game automatically when we have 2 players
       if (room.players.length === 2) {
         room.currentTurn = 'P1';
@@ -212,8 +236,7 @@ module.exports = function setupSockets(serverHttp, options = {}) {
           board: room.board
         });
 
-        // cleanup room
-        rooms.delete(code);
+        room.currentTurn = null; // Finalizada
         return;
       }
 
@@ -236,6 +259,28 @@ module.exports = function setupSockets(serverHttp, options = {}) {
       else rooms.set(code, room);
     });
 
+    socket.on("restartGame", ({ code }) => {
+      if (!rooms.has(code)) return;
+
+      const room = rooms.get(code);
+
+      // Solo el host (P1) puede reiniciar
+      if (room.players[0].socketId !== socket.id) {
+        return socket.emit("errorMessage", "Solo el host puede reiniciar la partida");
+      }
+
+      // Reiniciar tablero
+      room.board = [[0,0,0],[0,0,0],[0,0,0]];
+      room.currentTurn = "P1";
+
+      io.to(code).emit("restartGame", {
+        board: room.board,
+        currentTurn: room.currentTurn
+      });
+
+      console.log(`Juego reiniciado en sala ${code}`);
+    });
+
     socket.on('disconnect', () => {
       // find rooms where socket was present and remove
       for (const [code, room] of rooms.entries()) {
@@ -250,6 +295,8 @@ module.exports = function setupSockets(serverHttp, options = {}) {
     });
 
   });
+
+  
 
   return io;
 }
