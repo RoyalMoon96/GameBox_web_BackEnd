@@ -4,6 +4,7 @@ const jwt = require('jsonwebtoken');
 // módulos por juego / funciones
 const gatoSockets = require('./gato.sockets');
 const chatSockets = require('./chat.sockets');
+const conecta4Sockets = require('./conecta4.sockets');
 
 module.exports = function setupSockets(serverHttp, options = {}) {
 
@@ -29,8 +30,10 @@ module.exports = function setupSockets(serverHttp, options = {}) {
     console.log("Usuario conectado:", socket.id);
 
     // registrar módulos
-    gatoSockets(io, socket);
     chatSockets(io, socket);
+    //games
+    gatoSockets(io, socket);
+    conecta4Sockets(io, socket)
     // otrosJuegosSockets(io, socket);
 
   });
