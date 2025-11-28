@@ -142,15 +142,16 @@ console.log('socket connected', socket.id, 'user', socket.user && socket.user.us
           return { username: p.username, userid: p.userid, email: null };
         }));
 
-        const winnerName = won ? room.players[playerIndex].username : null;
-        const loserName = won ? room.players.find((_,i) => i !== playerIndex).username : null;
+        const winnerName = won ? room.players[playerIndex].userid : null;
+        const loserName = won ? room.players.find((_,i) => i !== playerIndex).userid : null;
 
         // persist match
 
         try {
           await Match.create({
-            winner: winnerName,
-            loser: loserName,
+            winner: playersInfo.find((p)=>{p.userid == winnerName}) ,
+            loser: playersInfo.find((p)=>{p.userid == loserName}),
+            game: "Tic Tac Toe",
             date: new Date(),
             players: playersInfo
           });

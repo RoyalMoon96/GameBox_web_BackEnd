@@ -198,9 +198,28 @@ module.exports = function conecta4Sockets(io, socket) {
       let winnerName = null;
       let loserName = null;
 
+      // build players info array by fetching from DB to avoid trusting client data
+      playersInfo = await Promise.all(room.players.map(async p => {
+        const dbUser = await User.findOne({ userid: p.userid }).select('username userid email').lean();
+        if (dbUser) return dbUser;
+        // fallback minimal info
+        return { username: p.username, userid: p.userid, email: null };
+      }));
+
       if (won) {
-        winnerName = room.players[playerIndex].username;
-        loserName = room.players.find((_, i) => i !== playerIndex).username;
+        winnerName = room.players[playerIndex].userid;
+        loserName = room.players.find((_, i) => i !== playerIndex).userid;
+      }
+      try {
+        await Match.create({
+          winner: playersInfo.find((p)=>p.userid == winnerName) ,
+          loser: playersInfo.find((p)=>p.userid == loserName),
+          game: "Conect 4",
+          date: new Date(),
+          players: playersInfo
+        });
+      } catch (err) {
+        console.error('Error saving match:', err);
       }
 
       // mandar gameOver

@@ -8,8 +8,9 @@ const PlayerInfoSchema = new mongoose.Schema({
 }, { _id: false });
 
 const MatchSchema = new mongoose.Schema({
-  winner: { type: String, default: null },
-  loser: { type: String, default: null },
+  winner:  { type: PlayerInfoSchema, default: null },
+  loser:  { type: PlayerInfoSchema, default: null },
+  game: { type: String, default: null },
   date: { type: Date, default: Date.now },
   players: { type: [PlayerInfoSchema], default: [] }
 }, { timestamps: true });
