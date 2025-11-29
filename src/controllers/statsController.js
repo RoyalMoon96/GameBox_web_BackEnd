@@ -10,12 +10,12 @@ exports.getStats = async (req, res) => {
     }).sort({ createdAt: -1 });
 
     const formatted = matches.map(m => ({
-      winner: m.winner.username,
+      winner: m.winner?.username,
       date: m.date,
       game: m.game || "unknown",
       details: `Players: ${m.players.map(p => p.username).join(", ")}`
     }));
-    const formatted_wins = matches.map(m => ({winner_id: m.winner.userid}));
+    const formatted_wins = matches.map(m => ({winner_id: m.winner?.userid}));
     const player_wins= formatted_wins.filter((m)=>m.winner_id==req.user.userid).length || 0
     res.json({
       ok: true,

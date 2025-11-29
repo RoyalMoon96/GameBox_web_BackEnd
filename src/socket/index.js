@@ -5,6 +5,7 @@ const jwt = require('jsonwebtoken');
 const gatoSockets = require('./gato.sockets');
 const chatSockets = require('./chat.sockets');
 const conecta4Sockets = require('./conecta4.sockets');
+const snakeSockets = require('./snake.sockets');
 
 module.exports = function setupSockets(serverHttp, options = {}) {
 
@@ -34,6 +35,7 @@ module.exports = function setupSockets(serverHttp, options = {}) {
     //games
     gatoSockets(io, socket);
     conecta4Sockets(io, socket)
+    snakeSockets(io, socket)
     // otrosJuegosSockets(io, socket);
 
   });
