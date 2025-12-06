@@ -2,10 +2,14 @@ version: "3.9"
 
 services:
   backend:
-    build: .
+    image: ${DOCKERHUB_USERNAME}/gamebox-backend:latest  # Cambiado de build: .
     container_name: gamebox-back
     restart: always
-    env_file: .env
+    environment:
+      - MONGO_URI=mongodb://admin:admin123@mongo:27017/gamebox?authSource=admin
+      - NODE_ENV=production
+      - PORT=3000
+      # Agrega aquí otras variables de tu .env si las necesitas
     ports:
       - "3000:3000"
     depends_on:
