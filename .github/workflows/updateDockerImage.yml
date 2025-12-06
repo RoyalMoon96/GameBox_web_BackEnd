@@ -1,4 +1,4 @@
-name: Deploy Backend to Azure VM with Docker Compose
+name: Deploy Backend to Azure VM
 
 on:
   push:
@@ -51,6 +51,7 @@ jobs:
           host: ${{ secrets.VM_HOST }}
           username: ${{ secrets.VM_USERNAME }}
           key: ${{ secrets.VM_SSH_KEY }}
+          port: 22
           source: "docker-compose.yml"
           target: "/home/${{ secrets.VM_USERNAME }}/gamebox-backend"
 
@@ -60,17 +61,24 @@ jobs:
           host: ${{ secrets.VM_HOST }}
           username: ${{ secrets.VM_USERNAME }}
           key: ${{ secrets.VM_SSH_KEY }}
+          port: 22
           script: |
             cd /home/${{ secrets.VM_USERNAME }}/gamebox-backend
+            
+            # Create .env file if needed (optional)
+            # echo "MONGO_URI=mongodb://admin:admin123@mongo:27017/gamebox" > .env
             
             # Pull latest backend image
             docker pull ${{ env.DOCKER_IMAGE }}:latest
             
             # Stop and remove old containers
-            docker-compose down
+            docker-compose down || true
             
             # Start new containers
             docker-compose up -d
+            
+            # Wait a bit for containers to start
+            sleep 5
             
             # Clean up old images
             docker image prune -af
@@ -78,3 +86,4 @@ jobs:
             # Show status
             echo "✅ Deployment complete!"
             docker-compose ps
+            docker-compose logs --tail=20 backend
