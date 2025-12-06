@@ -1,4 +1,4 @@
-name: Deploy Backend and MongoDB to Azure Container Apps
+name: Deploy Backend to Azure VM with Docker Compose
 
 on:
   push:
@@ -7,11 +7,6 @@ on:
   workflow_dispatch:
 
 env:
-  RESOURCE_GROUP: gamebox-rg
-  CONTAINER_APP_ENV: gamebox-env
-  BACKEND_APP_NAME: gamebox-backend
-  MONGODB_APP_NAME: gamebox-mongodb
-  LOCATION: eastus
   DOCKER_IMAGE: ${{ secrets.DOCKERHUB_USERNAME }}/gamebox-backend
 
 jobs:
@@ -47,97 +42,39 @@ jobs:
     needs: build-and-push
     
     steps:
-      - name: Azure Login
-        uses: azure/login@v1
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Copy docker-compose to VM
+        uses: appleboy/scp-action@master
         with:
-          creds: ${{ secrets.AZURE_CREDENTIALS }}
+          host: ${{ secrets.VM_HOST }}
+          username: ${{ secrets.VM_USERNAME }}
+          key: ${{ secrets.VM_SSH_KEY }}
+          source: "docker-compose.yml"
+          target: "/home/${{ secrets.VM_USERNAME }}/gamebox-backend"
 
-      - name: Create Resource Group (if not exists)
-        run: |
-          az group create \
-            --name ${{ env.RESOURCE_GROUP }} \
-            --location ${{ env.LOCATION }} || true
-
-      - name: Create Container Apps Environment (if not exists)
-        run: |
-          az containerapp env create \
-            --name ${{ env.CONTAINER_APP_ENV }} \
-            --resource-group ${{ env.RESOURCE_GROUP }} \
-            --location ${{ env.LOCATION }} || true
-
-      - name: Deploy MongoDB Container App
-        run: |
-          if az containerapp show --name ${{ env.MONGODB_APP_NAME }} --resource-group ${{ env.RESOURCE_GROUP }} &> /dev/null; then
-            echo "Updating existing MongoDB container app..."
-            az containerapp update \
-              --name ${{ env.MONGODB_APP_NAME }} \
-              --resource-group ${{ env.RESOURCE_GROUP }} \
-              --image mongo:6
-          else
-            echo "Creating new MongoDB container app..."
-            az containerapp create \
-              --name ${{ env.MONGODB_APP_NAME }} \
-              --resource-group ${{ env.RESOURCE_GROUP }} \
-              --environment ${{ env.CONTAINER_APP_ENV }} \
-              --image mongo:6 \
-              --target-port 27017 \
-              --ingress internal \
-              --min-replicas 1 \
-              --max-replicas 1 \
-              --cpu 0.5 \
-              --memory 1.0Gi \
-              --secrets \
-                mongo-root-username=admin \
-                mongo-root-password=admin123 \
-              --env-vars \
-                MONGO_INITDB_ROOT_USERNAME=secretref:mongo-root-username \
-                MONGO_INITDB_ROOT_PASSWORD=secretref:mongo-root-password
-          fi
-
-      - name: Get MongoDB Internal URL
-        id: mongo-url
-        run: |
-          MONGO_FQDN=$(az containerapp show \
-            --name ${{ env.MONGODB_APP_NAME }} \
-            --resource-group ${{ env.RESOURCE_GROUP }} \
-            --query properties.configuration.ingress.fqdn \
-            -o tsv)
-          echo "MONGO_FQDN=$MONGO_FQDN" >> $GITHUB_OUTPUT
-
-      - name: Deploy Backend Container App
-        run: |
-          if az containerapp show --name ${{ env.BACKEND_APP_NAME }} --resource-group ${{ env.RESOURCE_GROUP }} &> /dev/null; then
-            echo "Updating existing backend container app..."
-            az containerapp update \
-              --name ${{ env.BACKEND_APP_NAME }} \
-              --resource-group ${{ env.RESOURCE_GROUP }} \
-              --image ${{ env.DOCKER_IMAGE }}:latest
-          else
-            echo "Creating new backend container app..."
-            az containerapp create \
-              --name ${{ env.BACKEND_APP_NAME }} \
-              --resource-group ${{ env.RESOURCE_GROUP }} \
-              --environment ${{ env.CONTAINER_APP_ENV }} \
-              --image ${{ env.DOCKER_IMAGE }}:latest \
-              --target-port 3000 \
-              --ingress external \
-              --min-replicas 1 \
-              --max-replicas 3 \
-              --cpu 0.5 \
-              --memory 1.0Gi \
-              --secrets \
-                mongo-uri="mongodb://admin:admin123@${{ steps.mongo-url.outputs.MONGO_FQDN }}:27017" \
-              --env-vars \
-                MONGO_URI=secretref:mongo-uri \
-                NODE_ENV=production \
-                PORT=3000
-          fi
-
-      - name: Get Backend URL
-        run: |
-          BACKEND_URL=$(az containerapp show \
-            --name ${{ env.BACKEND_APP_NAME }} \
-            --resource-group ${{ env.RESOURCE_GROUP }} \
-            --query properties.configuration.ingress.fqdn \
-            -o tsv)
-          echo "🚀 Backend deployed at: https://$BACKEND_URL"
+      - name: Deploy to Azure VM
+        uses: appleboy/ssh-action@master
+        with:
+          host: ${{ secrets.VM_HOST }}
+          username: ${{ secrets.VM_USERNAME }}
+          key: ${{ secrets.VM_SSH_KEY }}
+          script: |
+            cd /home/${{ secrets.VM_USERNAME }}/gamebox-backend
+            
+            # Pull latest backend image
+            docker pull ${{ env.DOCKER_IMAGE }}:latest
+            
+            # Stop and remove old containers
+            docker-compose down
+            
+            # Start new containers
+            docker-compose up -d
+            
+            # Clean up old images
+            docker image prune -af
+            
+            # Show status
+            echo "✅ Deployment complete!"
+            docker-compose ps
