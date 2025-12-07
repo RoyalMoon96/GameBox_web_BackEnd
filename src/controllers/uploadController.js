@@ -10,7 +10,7 @@ exports.uploadAvatar = async (req, res) => {
     query={}
     if (req.file) {
       // Ruta pública del archivo
-      avatarUrl = `${process.env.SERVER_URL}:${process.env.PORT}/uploads/${req.user.userid}/${req.file.filename}`;
+      avatarUrl = `${process.env.SERVER_URL}/uploads/${req.user.userid}/${req.file.filename}`;
       query["img"]=avatarUrl
     }
     if (req.body.username){
