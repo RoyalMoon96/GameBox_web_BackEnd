@@ -9,6 +9,13 @@ services:
       - MONGO_URI=mongodb://admin:admin123@mongo:27017/gamebox?authSource=admin
       - NODE_ENV=production
       - PORT=3000
+      - JWT_SECRET
+      - JWT_EXPIRES_IN
+      - GOOGLE_CLIENT_ID
+      - GOOGLE_CLIENT_SECRET
+      
+    ports:
+      - "3000:3000"
       # Agrega aquí otras variables de tu .env si las necesitas
     ports:
       - "3000:3000"
