@@ -111,10 +111,32 @@ exports.login = async (req, res) => {
 };
 
 exports.me = async (req, res) => {
-  const { user } = req; 
-  const dbUser = await User.findOne({ userid: user.userid }).select('-password -__v');
-  res.json(dbUser);
+  try {
+    const dbUser = await User.findOne({ userid: req.user.userid })
+      .select('-password -__v');
+
+    if (!dbUser) return res.status(404).json({ message: 'usuario no encontrado' });
+
+    let finalImg = dbUser.img;
+
+    // Si la imagen es local (uploads/...), convierte a URL pública
+    if (finalImg && finalImg.startsWith('uploads/')) {
+      finalImg = `${process.env.SERVER_URL}/${finalImg}`;
+    }
+
+    return res.json({
+      username: dbUser.username,
+      userid: dbUser.userid,
+      email: dbUser.email,
+      img: finalImg
+    });
+
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: "error interno" });
+  }
 };
+
 
 //============
 // GOOGLE AUTH
