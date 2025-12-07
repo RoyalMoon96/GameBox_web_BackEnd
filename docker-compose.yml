@@ -16,9 +16,6 @@ services:
       
     ports:
       - "3000:3000"
-      # Agrega aquí otras variables de tu .env si las necesitas
-    ports:
-      - "3000:3000"
     depends_on:
       - mongo
     networks:
