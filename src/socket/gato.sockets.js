@@ -183,8 +183,8 @@ console.log('socket connected', socket.id, 'user', socket.user && socket.user.us
         
         // CAMBIO: gameOver -> gameOverGato
         io.to(code).emit('gameOverGato', {
-          winner: winnerName,
-          loser: loserName,
+          winner: playersInfo.find((p)=>{p.userid == winnerName}).username,
+          loser: playersInfo.find((p)=>{p.userid == loserName}).username,
           board: room.board
         });
 
