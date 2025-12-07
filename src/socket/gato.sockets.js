@@ -1,4 +1,3 @@
-
 const { Server } = require('socket.io');
 const jwt = require('jsonwebtoken');
 const Match = require('../models/match.model');
@@ -28,7 +27,7 @@ function checkWin(board, playerMarker) {
 module.exports = function gatoSockets(io, socket) {
 console.log('socket connected', socket.id, 'user', socket.user && socket.user.username);
 
-    socket.on('createRoom', async ({ preferredCode }) => {
+    socket.on('createRoomGato', async ({ preferredCode }) => {
       let code = preferredCode ? preferredCode.toUpperCase() : makeCode();
       // avoid collisions
       while (rooms.has(code)) code = makeCode();
@@ -41,14 +40,19 @@ console.log('socket connected', socket.id, 'user', socket.user && socket.user.us
       };
       rooms.set(code, room);
       socket.join(code);
-      socket.emit('roomCreated', { code });
+      
+      // CAMBIO: roomCreated -> roomCreatedGato
+      socket.emit('roomCreatedGato', { code });
+      
       console.log('room created', code);
     });
 
-  socket.on('joinRoom', async ({ code }) => {
+  socket.on('joinRoomGato', async ({ code }) => {
     code = (code || '').toUpperCase();
     if (!rooms.has(code)) {
-      return socket.emit('errorMessage', 'Sala no encontrada');
+      
+      // CAMBIO: errorMessage -> errorMessageGato
+      return socket.emit('errorMessageGato', 'Sala no encontrada');
     }
 
     const room = rooms.get(code);
@@ -63,12 +67,14 @@ console.log('socket connected', socket.id, 'user', socket.user && socket.user.us
         otherRoom.players.splice(idx, 1);
         socket.leave(otherCode);
 
-        io.to(otherCode).emit('errorMessage', 'Oponente salió');
+        // CAMBIO: errorMessage -> errorMessageGato
+        io.to(otherCode).emit('errorMessageGato', 'Oponente salió');
         console.log(`Usuario ${socket.user.username} salió automáticamente de sala ${otherCode}`);
       }
 }
     if (room.players.length >= 2) {
-      return socket.emit('errorMessage', 'Sala llena');
+      // CAMBIO: errorMessage -> errorMessageGato
+      return socket.emit('errorMessageGato', 'Sala llena');
     }
 
     room.players.push({
@@ -84,26 +90,33 @@ console.log('socket connected', socket.id, 'user', socket.user && socket.user.us
       const host = room.players[0];
       const guest = room.players[1];
 
+      // CAMBIO: playerInfo -> playerInfoGato
       // Send to Host (P1)
-      io.to(host.socketId).emit("playerInfo", {
+      io.to(host.socketId).emit("playerInfoGato", {
         self: { username: host.username, role: "P1" },
         opponent: { username: guest.username, role: "P2" }
       });
 
+      // CAMBIO: playerInfo -> playerInfoGato
       // Send to Guest (P2)
-      io.to(guest.socketId).emit("playerInfo", {
+      io.to(guest.socketId).emit("playerInfoGato", {
         self: { username: guest.username, role: "P2" },
         opponent: { username: host.username, role: "P1" }
       });
 
       // Guest officially joined
-      socket.emit("roomJoined", { code, role: "P2" });
+      socket.emit("roomJoinedGato", { code, role: "P2" });
+      
+      // CAMBIO: opponentJoined -> opponentJoinedGato (Este debe ir en el if para informar al host)
+      // Agregado, el host necesita saber que alguien entró, debe estar dentro del bloque de joinRoomGato en el backend
+      io.to(host.socketId).emit('opponentJoinedGato', { opponent: { username: guest.username } });
+
       // Start game automatically when we have 2 players
       if (room.players.length === 2) {
         room.currentTurn = 'P1';
         room.board = [[0,0,0],[0,0,0],[0,0,0]];
         // send startGame event with initial board and currentTurn
-        io.to(code).emit('startGame', {
+        io.to(code).emit('startGameGato', {
           code,
           board: room.board,
           currentTurn: room.currentTurn
@@ -112,19 +125,24 @@ console.log('socket connected', socket.id, 'user', socket.user && socket.user.us
       }
     });
 
-    socket.on('playerMove', async ({ code, row, col }) => {
+    socket.on('playerMoveGato', async ({ code, row, col }) => {
       code = (code || '').toUpperCase();
-      if (!rooms.has(code)) return socket.emit('errorMessage', 'Sala no existe');
+      // CAMBIO: errorMessage -> errorMessageGato
+      if (!rooms.has(code)) return socket.emit('errorMessageGato', 'Sala no existe');
       const room = rooms.get(code);
       // find player index
       const playerIndex = room.players.findIndex(p => p.socketId === socket.id);
-      if (playerIndex === -1) return socket.emit('errorMessage', 'No estás en la sala');
+      // CAMBIO: errorMessage -> errorMessageGato
+      if (playerIndex === -1) return socket.emit('errorMessageGato', 'No estás en la sala');
       const playerMarker = playerIndex === 0 ? 'P1' : 'P2';
       // check turn
-      if (room.currentTurn !== playerMarker) return socket.emit('errorMessage', 'No es tu turno');
+      // CAMBIO: errorMessage -> errorMessageGato
+      if (room.currentTurn !== playerMarker) return socket.emit('errorMessageGato', 'No es tu turno');
       // validate coords
-      if (row < 0 || row > 2 || col < 0 || col > 2) return socket.emit('errorMessage', 'Movimiento inválido');
-      if (room.board[row][col] !== 0) return socket.emit('errorMessage', 'Casilla ocupada');
+      // CAMBIO: errorMessage -> errorMessageGato
+      if (row < 0 || row > 2 || col < 0 || col > 2) return socket.emit('errorMessageGato', 'Movimiento inválido');
+      // CAMBIO: errorMessage -> errorMessageGato
+      if (room.board[row][col] !== 0) return socket.emit('errorMessageGato', 'Casilla ocupada');
 
       // apply move
       room.board[row][col] = playerMarker;
@@ -160,8 +178,11 @@ console.log('socket connected', socket.id, 'user', socket.user && socket.user.us
         }
 
         // notify clients
-        io.to(code).emit('boardUpdate', { board: room.board, currentTurn: room.currentTurn });
-        io.to(code).emit('gameOver', {
+        // CAMBIO: boardUpdate -> boardUpdateGato
+        io.to(code).emit('boardUpdateGato', { board: room.board, currentTurn: room.currentTurn });
+        
+        // CAMBIO: gameOver -> gameOverGato
+        io.to(code).emit('gameOverGato', {
           winner: winnerName,
           loser: loserName,
           board: room.board
@@ -173,10 +194,12 @@ console.log('socket connected', socket.id, 'user', socket.user && socket.user.us
 
       // next turn
       room.currentTurn = (room.currentTurn === 'P1') ? 'P2' : 'P1';
-      io.to(code).emit('boardUpdate', { board: room.board, currentTurn: room.currentTurn });
+      // CAMBIO: boardUpdate -> boardUpdateGato
+      io.to(code).emit('boardUpdateGato', { board: room.board, currentTurn: room.currentTurn });
     });
 
-    socket.on('leaveRoom', ({ code }) => {
+    // CAMBIO: leaveRoom -> leaveRoomGato
+    socket.on('leaveRoomGato', ({ code }) => {
       code = (code || '').toUpperCase();
       if (!rooms.has(code)) return;
       const room = rooms.get(code);
@@ -184,27 +207,29 @@ console.log('socket connected', socket.id, 'user', socket.user && socket.user.us
       room.players = room.players.filter(p => p.socketId !== socket.id);
       socket.leave(code);
       // inform other players
-      io.to(code).emit('errorMessage', 'Oponente salió');
+      // CAMBIO: errorMessage -> errorMessageGato
+      io.to(code).emit('errorMessageGato', 'Oponente salió');
       // delete room if empty
       if (room.players.length === 0) rooms.delete(code);
       else rooms.set(code, room);
     });
 
-    socket.on("restartGame", ({ code }) => {
+    socket.on("restartGameGato", ({ code }) => {
       if (!rooms.has(code)) return;
 
       const room = rooms.get(code);
 
       // Solo el host (P1) puede reiniciar
+      // CAMBIO: errorMessage -> errorMessageGato
       if (room.players[0].socketId !== socket.id) {
-        return socket.emit("errorMessage", "Solo el host puede reiniciar la partida");
+        return socket.emit("errorMessageGato", "Solo el host puede reiniciar la partida");
       }
 
       // Reiniciar tablero
       room.board = [[0,0,0],[0,0,0],[0,0,0]];
       room.currentTurn = "P1";
 
-      io.to(code).emit("restartGame", {
+      io.to(code).emit("restartGameGato", {
         board: room.board,
         currentTurn: room.currentTurn
       });
@@ -218,7 +243,8 @@ console.log('socket connected', socket.id, 'user', socket.user && socket.user.us
         const idx = room.players.findIndex(p => p.socketId === socket.id);
         if (idx !== -1) {
           room.players.splice(idx, 1);
-          io.to(code).emit('errorMessage', 'Oponente desconectado');
+          // CAMBIO: errorMessage -> errorMessageGato
+          io.to(code).emit('errorMessageGato', 'Oponente desconectado');
           if (room.players.length === 0) rooms.delete(code);
           else rooms.set(code, room);
         }
