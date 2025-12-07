@@ -13,6 +13,7 @@ services:
       - JWT_EXPIRES_IN
       - GOOGLE_CLIENT_ID
       - GOOGLE_CLIENT_SECRET
+      - SERVER_URL
       
     ports:
       - "3000:3000"
