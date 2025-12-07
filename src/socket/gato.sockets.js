@@ -159,22 +159,17 @@ console.log('socket connected', socket.id, 'user', socket.user && socket.user.us
           // fallback minimal info
           return { username: p.username, userid: p.userid, email: null };
         }));
-        console.log("playersInfo:")
-        console.log(playersInfo)
-        
+
         const winnerName = won ? room.players[playerIndex].userid : null;
         const loserName = won ? room.players.find((_,i) => i !== playerIndex).userid : null;
-        console.log("winnerID:")
-        console.log(winnerName)
-        console.log("loserID:")
-        console.log(loserName)
+
 
         // persist match
 
         try {
           await Match.create({
-            winner: playersInfo.find((p)=>{p.userid == winnerName}) ,
-            loser: playersInfo.find((p)=>{p.userid == loserName}),
+            winner: playersInfo.find((p)=>p.userid == winnerName) ,
+            loser: playersInfo.find((p)=>p.userid == loserName),
             game: "Tic Tac Toe",
             date: new Date(),
             players: playersInfo
@@ -189,8 +184,8 @@ console.log('socket connected', socket.id, 'user', socket.user && socket.user.us
         
         // CAMBIO: gameOver -> gameOverGato
         io.to(code).emit('gameOverGato', {
-          winner: playersInfo.find((p)=>{p.userid == winnerName}).username,
-          loser: playersInfo.find((p)=>{p.userid == winnerName}).username,
+          winner: playersInfo.find((p)=>p.userid == winnerName).username,
+          loser: playersInfo.find((p)=>p.userid == winnerName).username,
           board: room.board
         });
 
