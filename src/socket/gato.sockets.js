@@ -165,11 +165,13 @@ console.log('socket connected', socket.id, 'user', socket.user && socket.user.us
 
 
         // persist match
+        const winnerUser = won ? playersInfo.find((p)=>p.userid == winnerName) : {username:"Draw", userid:"", email:""}
+        const loserUser = won ? playersInfo.find((p)=>p.userid == loserName) : {username:"Draw", userid:"", email:""}
 
         try {
           await Match.create({
-            winner: playersInfo.find((p)=>p.userid == winnerName) ,
-            loser: playersInfo.find((p)=>p.userid == loserName),
+            winner: winnerUser ,
+            loser: loserUser,
             game: "Tic Tac Toe",
             date: new Date(),
             players: playersInfo
@@ -184,8 +186,8 @@ console.log('socket connected', socket.id, 'user', socket.user && socket.user.us
         
         // CAMBIO: gameOver -> gameOverGato
         io.to(code).emit('gameOverGato', {
-          winner: playersInfo.find((p)=>p.userid == winnerName).username,
-          loser: playersInfo.find((p)=>p.userid == winnerName).username,
+          winner: winnerUser.username,
+          loser: loserUser.username,
           board: room.board
         });
 
